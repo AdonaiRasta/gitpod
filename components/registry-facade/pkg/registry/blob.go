@@ -19,7 +19,7 @@ import (
 	distv2 "github.com/docker/distribution/registry/api/v2"
 	"github.com/gorilla/handlers"
 	files "github.com/ipfs/go-ipfs-files"
-	"github.com/ipfs/interface-go-ipfs-core/path"
+	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	"github.com/opencontainers/go-digest"
 	ociv1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opentracing/opentracing-go"
@@ -174,6 +174,7 @@ func (bh *blobHandler) getBlob(w http.ResponseWriter, r *http.Request) {
 
 		// we are returning a file from IPFS.
 		if _, ok := src.(ipfsBlobSource); ok {
+			log.WithField("digest", bh.Digest).Info("skipping update of blob already existing in IPFS")
 			return nil
 		}
 
@@ -358,17 +359,19 @@ func (sbs ipfsBlobSource) HasBlob(ctx context.Context, spec *api.ImageSpec, dgst
 }
 
 func (sbs ipfsBlobSource) GetBlob(ctx context.Context, spec *api.ImageSpec, dgst digest.Digest) (mediaType string, url string, data io.ReadCloser, err error) {
+	log := log.WithField("digest", dgst)
+
 	var ipfsCID string
 	ipfsCID, err = sbs.source.Redis.Get(ctx, dgst.String()).Result()
 	if err != nil {
-		log.WithError(err).WithField("digest", dgst).Error("unable to get blob details from Redis")
+		log.WithError(err).Error("unable to get blob details from Redis")
 		err = distv2.ErrorCodeBlobUnknown
 		return
 	}
 
-	ipfsFile, err := sbs.source.IPFS.Unixfs().Get(ctx, path.New(ipfsCID))
+	ipfsFile, err := sbs.source.IPFS.Unixfs().Get(ctx, icorepath.New(ipfsCID))
 	if err != nil {
-		log.WithError(err).WithField("digest", dgst).Error("unable to get blob from IPFS")
+		log.WithError(err).Error("unable to get blob from IPFS")
 		err = distv2.ErrorCodeBlobUnknown
 		return
 	}
@@ -378,13 +381,14 @@ func (sbs ipfsBlobSource) GetBlob(ctx context.Context, spec *api.ImageSpec, dgst
 		io.ReaderAt
 	})
 	if !ok {
-		log.WithError(err).WithField("digest", dgst).Error("IPFS file does not support io.ReaderAt")
+		log.WithError(err).Error("IPFS file does not support io.ReaderAt")
 		err = distv2.ErrorCodeBlobUnknown
 		return
 	}
 
 	mediaType, err = sbs.source.Redis.Get(ctx, mediaTypeKeyFromDigest(dgst)).Result()
 	if err != nil {
+		log.WithError(err).Error("cannot get media type from Redis")
 		err = distv2.ErrorCodeBlobUnknown
 		return
 	}
