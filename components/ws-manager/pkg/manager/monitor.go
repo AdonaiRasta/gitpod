@@ -1161,19 +1161,33 @@ func (m *Monitor) finalizeWorkspaceContent(ctx context.Context, wso *workspaceOb
 	}
 	hist.Observe(time.Since(t).Seconds())
 
+	if backupError == nil {
+		c, err := m.manager.metrics.totalBackupSuccessCounterVec.GetMetricWithLabelValues(wsType)
+		if err != nil {
+			log.WithError(err).WithField("type", wsType).Warn("cannot get counter for workspace backup success counter")
+		} else {
+			c.Inc()
+		}
+		return
+	}
+	c, err := m.manager.metrics.totalBackupFailureCounterVec.GetMetricWithLabelValues(wsType)
+	if err != nil {
+		log.WithError(err).WithField("type", wsType).Warn("cannot get counter for workspace backup failure metric")
+	} else {
+		c.Inc()
+	}
+
 	disposalStatus = &workspaceDisposalStatus{
 		BackupComplete: true,
 		GitStatus:      gitStatus,
 	}
-	if backupError != nil {
-		if dataloss {
-			disposalStatus.BackupFailure = backupError.Error()
-		} else {
-			// internal errors make no difference to the user experience. The backup still worked, we just messed up some
-			// state management or cleanup. No need to worry the user.
-			log.WithError(backupError).WithFields(wso.GetOWI()).Warn("internal error while disposing workspace content")
-			tracing.LogError(span, backupError)
-		}
+	if dataloss {
+		disposalStatus.BackupFailure = backupError.Error()
+	} else {
+		// internal errors make no difference to the user experience. The backup still worked, we just messed up some
+		// state management or cleanup. No need to worry the user.
+		log.WithError(backupError).WithFields(wso.GetOWI()).Warn("internal error while disposing workspace content")
+		tracing.LogError(span, backupError)
 	}
 }
 
