@@ -28,7 +28,7 @@ require (
 require (
 	github.com/fsouza/fake-gcs-server v1.37.11
 	github.com/testcontainers/testcontainers-go v0.13.0
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
+	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
 	k8s.io/apimachinery v0.23.5
 )
 
@@ -95,7 +95,7 @@ require (
 	go.uber.org/atomic v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect
 	golang.org/x/net v0.0.0-20220412020605-290c469a71a5 // indirect
-	golang.org/x/text v0.3.7 // indirect
+	golang.org/x/text v0.3.8 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220414192740-2d67ff6cf2b4 // indirect
